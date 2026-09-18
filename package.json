@@ -1,0 +1,11 @@
+{
+  "name": "rajbdilip-agent-skills",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reusable Agent Skills installable with the skills CLI",
+  "license": "MIT",
+  "scripts": {
+    "test": "node scripts/validate-skills.mjs",
+    "validate": "node scripts/validate-skills.mjs"
+  }
+}
