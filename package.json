@@ -1,0 +1,46 @@
+{
+  "name": "rajbdilip-skills",
+  "version": "0.0.1",
+  "description": "Agent Skills for Claude Code, Codex and Gemini CLI, with an installer that works without GitHub access",
+  "keywords": [
+    "agent-skills",
+    "skills",
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "ai-agents",
+    "memory"
+  ],
+  "author": "Dilip Raj Bishwokarma",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "rajbdilip-skills": "scripts/cli.mjs"
+  },
+  "files": [
+    "skills",
+    "!skills/*/tests",
+    "scripts/cli.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rajbdilip/skills.git"
+  },
+  "homepage": "https://github.com/rajbdilip/skills#readme",
+  "bugs": {
+    "url": "https://github.com/rajbdilip/skills/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node scripts/validate-skills.mjs && node scripts/test-cli.mjs && node skills/workspace-memory/tests/smoke.mjs",
+    "validate": "node scripts/validate-skills.mjs",
+    "prepack": "npm test"
+  }
+}

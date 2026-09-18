@@ -1,0 +1,4 @@
+interface:
+  display_name: "Workspace Memory"
+  short_description: "Git-backed memory for agent workspaces"
+  default_prompt: "Use $workspace-memory to initialize durable project memory in this workspace."
