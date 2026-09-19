@@ -1,6 +1,6 @@
 # Agent Skills
 
-A public collection of reusable skills for AI coding agents. Each skill follows the open `SKILL.md` format.
+Reusable skills for AI agents such as Claude Code, Codex and Gemini CLI, for coding and non-coding work alike. Each skill follows the open `SKILL.md` format.
 
 ## Install with skills.sh (recommended)
 
@@ -84,9 +84,9 @@ skills/
     assets/               # Optional output resources
     tests/                # Optional; kept in Git, left out of the npm package
 scripts/
-  cli.mjs                 # npm install/update CLI
+  cli.mjs                 # npm installer (add, update, remove, list)
   test-cli.mjs            # npm CLI smoke tests
-  validate-skills.mjs
+  validate-skills.mjs     # frontmatter and link checks (npm test)
 ```
 
 Every skill is self-contained. The only required file is `skills/<skill-name>/SKILL.md`, with `name` and `description` in its YAML frontmatter.

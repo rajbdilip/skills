@@ -14,7 +14,7 @@ workspace-memory/
 │   ├── hook.mjs  index.mjs  audit.mjs  compact.mjs  lib.mjs
 ├── assets/templates/     memory/ and project/ starter files
 ├── assets/fragments/     managed blocks for AGENTS.md, CLAUDE.md, GEMINI.md, code-repo pointer
-└── tests/                smoke.mjs (script tests) and eval/ (model-parity eval)
+└── tests/                smoke.mjs (script tests), longrun.mjs (6-month simulation), eval/ (model tests); not shipped to npm
 ```
 
 ## Workspace
@@ -58,4 +58,4 @@ Override the location with `WORKSPACE_MEMORY_HOME`.
 | `review.staleDays` | 30 | Dated status lines and threads older than this are flagged |
 | `projects` | `{}` | Linked code repos: `{ "name": { "path": "/abs/path" } }` (use `init.mjs --link`) |
 
-Version 1 configs are read transparently. `init.mjs --upgrade` rewrites them as version 2 and removes v1 leftovers (vendored scripts, copied skills).
+Configs from pre-release builds (`"version": 1`) are still read. `init.mjs --upgrade` rewrites them in the current format and removes files those builds copied into the workspace.

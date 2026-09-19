@@ -86,7 +86,6 @@ function updateSettings(file, apply, dryRun, report) {
 }
 
 function linkSkill(linkPath, target, dryRun, report, uninstall) {
-  const relativeTarget = target;
   let stat = null;
   try { stat = fs.lstatSync(linkPath); } catch {}
   if (uninstall) {
@@ -101,12 +100,12 @@ function linkSkill(linkPath, target, dryRun, report, uninstall) {
     report.push(`warning: ${linkPath} already exists and is not this skill; left untouched. Remove it and re-run to link.`);
     return;
   }
-  report.push(`${dryRun ? 'would link' : 'linked'} ${linkPath} -> ${relativeTarget}`);
+  report.push(`${dryRun ? 'would link' : 'linked'} ${linkPath} -> ${target}`);
   if (dryRun) return;
   fs.mkdirSync(path.dirname(linkPath), { recursive: true });
   // Windows: directory junctions need no admin rights or developer mode, but must use absolute targets.
-  if (process.platform === 'win32') fs.symlinkSync(path.resolve(path.dirname(linkPath), relativeTarget), linkPath, 'junction');
-  else fs.symlinkSync(relativeTarget, linkPath, 'dir');
+  if (process.platform === 'win32') fs.symlinkSync(path.resolve(path.dirname(linkPath), target), linkPath, 'junction');
+  else fs.symlinkSync(target, linkPath, 'dir');
 }
 
 function copySkill(destination, dryRun, report) {
@@ -114,7 +113,9 @@ function copySkill(destination, dryRun, report) {
   report.push(`${dryRun ? 'would copy' : 'copied'} skill to ${destination}`);
   if (dryRun) return;
   fs.rmSync(destination, { recursive: true, force: true });
-  fs.cpSync(SKILL_ROOT, destination, { recursive: true, filter: (source) => !source.includes(`${path.sep}tests${path.sep}eval${path.sep}runs`) });
+  // Development-only files stay behind: the project gets exactly what the skill needs at runtime.
+  const skip = new Set(['tests', '.git', '.DS_Store']);
+  fs.cpSync(SKILL_ROOT, destination, { recursive: true, filter: (source) => !skip.has(path.basename(source)) || path.dirname(source) !== SKILL_ROOT && path.basename(source) !== '.DS_Store' });
 }
 
 function hasGlobalHooks(home) {
@@ -134,6 +135,12 @@ function main() {
   const home = process.env.WORKSPACE_MEMORY_INSTALL_HOME || os.homedir();
   const report = [];
 
+  // Read every settings file first: a broken one must stop the install before anything changes.
+  const project = path.resolve(String(values(args, 'target')[0] || '.'));
+  const base = scope === 'global' ? home : project;
+  if (agents.includes('claude')) readJson(path.join(base, '.claude', 'settings.json'));
+  if (agents.includes('gemini')) readJson(path.join(base, '.gemini', 'settings.json'));
+
   if (scope === 'global') {
     const script = path.join(SKILL_ROOT, 'scripts', 'hook.mjs');
     if (agents.includes('claude')) {
@@ -148,7 +155,6 @@ function main() {
     }
     if (agents.includes('codex') && !uninstall) report.push('codex: no lifecycle hooks; it follows the AGENTS.md block that init.mjs writes into each workspace.');
   } else {
-    const project = path.resolve(String(values(args, 'target')[0] || '.'));
     const skillDir = path.join(project, '.agents', 'skills', NAME);
     if (uninstall) {
       linkSkill(path.join(project, '.claude', 'skills', NAME), path.join('..', '..', '.agents', 'skills', NAME), dryRun, report, true);

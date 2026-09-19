@@ -408,6 +408,74 @@ test('18. Windows line endings are handled', () => {
   assert.doesNotMatch(text, /\r/);
 });
 
+test('19. installer: dry-run, single agent, bad JSON, old hooks, foreign folders, project uninstall, runnable hook', () => {
+  const home = path.join(TMP, 'home19');
+  const env19 = (extra = {}) => ({ ...ENV, WORKSPACE_MEMORY_INSTALL_HOME: home, ...extra });
+  const install = (args) => {
+    const result = spawnSync('node', [path.join(SKILL, 'scripts', 'install.mjs'), ...args], { cwd: TMP, env: env19(), encoding: 'utf8' });
+    return { code: result.status, out: result.stdout || '', err: result.stderr || '' };
+  };
+  fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+
+  // --dry-run reports but writes nothing.
+  const dry = install(['--scope', 'global', '--dry-run']);
+  assert.equal(dry.code, 0, dry.err);
+  assert.match(dry.out, /would update .*settings\.json/);
+  assert.ok(!fs.existsSync(path.join(home, '.claude', 'settings.json')), 'dry run wrote settings');
+  assert.ok(!fs.existsSync(path.join(home, '.agents')), 'dry run created links');
+
+  // Unknown agents and scopes are refused with a fix.
+  assert.match(install(['--agents', 'cursor']).err, /Unknown agent[\s\S]*fix:/);
+  assert.match(install(['--scope', 'everywhere']).err, /--scope must be[\s\S]*fix:/);
+
+  // A broken settings file is reported and left exactly as it was.
+  fs.writeFileSync(path.join(home, '.claude', 'settings.json'), '{ "theme": "dark", ');
+  const broken = install(['--scope', 'global', '--agents', 'claude']);
+  assert.equal(broken.code, 1);
+  assert.match(broken.err, /Invalid JSON[\s\S]*fix:/);
+  assert.equal(read(home, '.claude', 'settings.json'), '{ "theme": "dark", ');
+
+  // Old (v1) hook entries are replaced, not duplicated; unrelated hooks survive.
+  fs.writeFileSync(path.join(home, '.claude', 'settings.json'), JSON.stringify({ hooks: { Stop: [
+    { hooks: [{ type: 'command', command: 'node', args: ['${CLAUDE_PROJECT_DIR}/.workspace-memory/scripts/hook.mjs', 'turn-end'] }] },
+    { hooks: [{ type: 'command', command: 'echo mine' }] },
+  ] } }));
+  // A folder that is not this skill is never overwritten.
+  fs.mkdirSync(path.join(home, '.claude', 'skills', 'workspace-memory'), { recursive: true });
+  fs.writeFileSync(path.join(home, '.claude', 'skills', 'workspace-memory', 'mine.txt'), 'keep');
+  const only = install(['--scope', 'global', '--agents', 'claude']);
+  assert.equal(only.code, 0, only.err);
+  assert.match(only.out, /already exists and is not this skill; left untouched/);
+  assert.equal(read(home, '.claude', 'skills', 'workspace-memory', 'mine.txt'), 'keep');
+  const settings = JSON.parse(read(home, '.claude', 'settings.json'));
+  const text = JSON.stringify(settings.hooks);
+  assert.doesNotMatch(text, /\.workspace-memory\/scripts\/hook\.mjs/, 'v1 hook should be removed');
+  assert.match(text, /echo mine/);
+  assert.equal(settings.hooks.Stop.length, 3, 'mine + nudge + async turn-end');
+  assert.ok(!fs.existsSync(path.join(home, '.gemini')), '--agents claude must not touch Gemini');
+  assert.ok(!fs.existsSync(path.join(home, '.agents')), '--agents claude must not link ~/.agents');
+
+  // The installed SessionStart command actually runs and loads memory in a workspace.
+  const handler = settings.hooks.SessionStart[0].hooks[0];
+  const started = spawnSync(handler.command, handler.args, { cwd: WS, env: ENV, encoding: 'utf8', input: JSON.stringify({ cwd: WS, session_id: 'i19' }) });
+  assert.equal(started.status, 0, started.stderr);
+  assert.match(JSON.parse(started.stdout).hookSpecificOutput.additionalContext, /Workspace memory is active/);
+
+  // Project install ships runtime files only; project uninstall removes hooks, link and copy.
+  const proj = path.join(TMP, 'proj19');
+  fs.mkdirSync(proj);
+  assert.equal(install(['--scope', 'project', '--target', proj]).code, 0);
+  const copy = path.join(proj, '.agents', 'skills', 'workspace-memory');
+  assert.ok(fs.existsSync(path.join(copy, 'scripts', 'hook.mjs')));
+  assert.ok(!fs.existsSync(path.join(copy, 'tests')), 'project copy must not include tests');
+  assert.match(read(proj, '.gemini', 'settings.json'), /GEMINI_PROJECT_DIR/);
+  const gone = install(['--scope', 'project', '--target', proj, '--uninstall']);
+  assert.equal(gone.code, 0, gone.err);
+  assert.ok(!fs.existsSync(copy));
+  assert.ok(!fs.existsSync(path.join(proj, '.claude', 'skills', 'workspace-memory')));
+  assert.doesNotMatch(read(proj, '.claude', 'settings.json'), /workspace-memory/);
+});
+
 fs.rmSync(TMP, { recursive: true, force: true });
 process.stdout.write(failures ? `\n${failures} test(s) failed\n` : '\nall tests passed\n');
 process.exitCode = failures ? 1 : 0;

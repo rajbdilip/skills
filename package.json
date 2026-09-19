@@ -1,6 +1,6 @@
 {
   "name": "rajbdilip-skills",
-  "version": "0.0.2",
+  "version": "0.0.1",
   "description": "Agent Skills for Claude Code, Codex and Gemini CLI, with an installer that works without GitHub access",
   "keywords": [
     "agent-skills",
@@ -11,7 +11,7 @@
     "ai-agents",
     "memory"
   ],
-  "author": "Dilip Raj Baral",
+  "author": "Dilip Raj Bishwokarma",
   "license": "MIT",
   "type": "module",
   "bin": {
