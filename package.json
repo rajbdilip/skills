@@ -1,5 +1,5 @@
 {
-  "name": "rajbdilip-agent-skills",
+  "name": "rajbdilip-skills",
   "version": "0.1.0",
   "private": true,
   "description": "Reusable Agent Skills installable with the skills CLI",

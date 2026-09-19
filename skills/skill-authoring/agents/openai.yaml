@@ -1,4 +1,0 @@
-interface:
-  display_name: "Skill Authoring"
-  short_description: "Create and refine reusable Agent Skills"
-  default_prompt: "Use $skill-authoring to create or improve a skill in this repository."
