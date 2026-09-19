@@ -64,7 +64,7 @@ const check = (label, fn) => {
 // ---- setup ----
 fs.mkdirSync(WS);
 spawnSync('git', ['init', '-q', '--bare', path.join(TMP, 'remote.git')]);
-run('init.mjs', ['--target', WS], iso(0));
+run('init.mjs', ['--target', WS, '--push', 'auto'], iso(0));
 spawnSync('git', ['remote', 'add', 'origin', path.join(TMP, 'remote.git')], { cwd: WS });
 run('capture.mjs', ['checkpoint', '--objective', 'Run the 2026 expansion programme', '--constraint', 'Budget cap is 2M EUR for 2026', '--pref', 'Status updates as at most 5 bullets'], iso(0));
 

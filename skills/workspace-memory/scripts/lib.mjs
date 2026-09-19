@@ -86,7 +86,7 @@ export const DEFAULT_CONFIG = {
   },
   index: { recentSessions: 5, recentDecisions: 5 },
   archive: { sessionAgeDays: 90 },
-  commit: { enabled: true, scope: 'workspace', push: 'auto', remote: 'origin', messagePrefix: 'memory', maxFileMB: 10 },
+  commit: { enabled: true, scope: 'workspace', push: 'never', remote: 'origin', messagePrefix: 'memory', maxFileMB: 10 },
   nudge: { enabled: true, minTurnsBetween: 3, turnsWithoutMemory: 6 },
   review: { everyDays: 14, staleDays: 30 },
   projects: {},

@@ -48,7 +48,7 @@ Override the location with `WORKSPACE_MEMORY_HOME`.
 | `archive.sessionAgeDays` | 90 | Default age for `compact.mjs` |
 | `commit.enabled` | `true` | Turn automatic commits off entirely |
 | `commit.scope` | `"workspace"` | `workspace` = everything in the folder; `memory` = only `memory/` |
-| `commit.push` | `"auto"` | `auto` or `never` |
+| `commit.push` | `"never"` | `never` (commit locally only) or `auto` (push after each commit) |
 | `commit.remote` | `"origin"` | Preferred remote when there is no upstream |
 | `commit.maxFileMB` | 10 | Larger files are left uncommitted, with a warning |
 | `nudge.enabled` | `true` | End-of-turn reminder |

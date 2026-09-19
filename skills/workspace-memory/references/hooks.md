@@ -7,7 +7,7 @@
 | `SessionStart` / `SessionStart` | `session-start` | Injects PROFILE, CURRENT, ACTIVE_THREADS and INDEX within character budgets, plus the checkpoint and search commands and a "review due" note when applicable; records a change baseline |
 | `UserPromptSubmit` / `BeforeAgent` | `prompt` | Remembers the user's message so the end-of-turn check can spot preferences, decisions, blockers and deadlines stated in chat |
 | `Stop` / `AfterAgent` | `nudge` | Asks the agent once to record memory if work changed but memory did not (or after N quiet turns) |
-| `Stop` (async) / `AfterAgent` | `turn-end` | Rebuilds indexes, audits, commits, pushes |
+| `Stop` (async) / `AfterAgent` | `turn-end` | Rebuilds indexes, audits, commits (and pushes if `push` is `auto`) |
 | `PreCompact` / `PreCompress` | `pre-compact` | Same as turn-end, before context is compressed |
 | `SessionEnd` / `SessionEnd` | `session-end` | Final commit |
 
@@ -37,11 +37,11 @@ A lock prevents two commits at once.
 
 ## Push
 
-`commit.push: "auto"` (default) pushes after each commit:
+Pushing is off by default (`commit.push: "never"`). With `commit.push: "auto"`, each commit is pushed:
 1. to the upstream if one exists;
 2. otherwise to `commit.remote` (default `origin`), or to the only remote;
 3. establishing upstream with a normal `git push -u`.
 
 It never force-pushes, never retries in a loop and never rewrites history. A failed push leaves the local commit and reports a `fix:`.
 
-`commit.push: "never"` keeps everything local. No remote configured means nothing is pushed, and that is not an error.
+`commit.push: "never"` (the default) keeps everything local. No remote configured means nothing is pushed, and that is not an error.

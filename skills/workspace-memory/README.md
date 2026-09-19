@@ -22,7 +22,7 @@ session start ──► hook injects PROFILE + CURRENT + ACTIVE_THREADS + INDEX 
       │
    you work ──► agent records durable things with ONE command (capture.mjs checkpoint ...)
       │
-  turn ends ──► reminder if work changed but memory didn't ──► auto-commit (+ push)
+  turn ends ──► reminder if work changed but memory didn't ──► auto-commit (push is opt-in)
 ```
 
 - **The agent decides *what* to remember. Scripts do *all* the writing.** The scripts route each item to the right file, date it, remove duplicates, reject placeholders and secrets, rebuild indexes and audit. This is why smaller models produce the same quality as big ones.
@@ -57,7 +57,7 @@ It copies the same skill folder into `<project>/.agents/skills/` and wires proje
 ```bash
 node ~/.claude/skills/workspace-memory/scripts/init.mjs --target ~/work/offsite
 ```
-To back it up, add a remote once (`git remote add origin <url>`). Memory then pushes after every turn.
+Memory is committed locally after every turn. Pushing is off by default. To back it up, add a remote you're allowed to use (`git remote add origin <url>`) and turn pushing on: `init.mjs --target ~/work/offsite --push auto`.
 
 **2. Start a session there** (`claude`, `gemini` or `codex`). Tell it what you're doing and what you like:
 
@@ -115,9 +115,9 @@ Sessions started inside `~/code/offsite-app` now load `memory/projects/app/` fro
 
 | Where you work | What gets committed | Pushed? |
 | --- | --- | --- |
-| Planning workspace (default `commit.scope: "workspace"`) | Every change in the folder, respecting `.gitignore` | Yes, if a remote exists |
-| Workspace with `commit.scope: "memory"` | Only `memory/` | Yes, if a remote exists |
-| Linked code repo | **Nothing in the code repo**; memory commits land in the hub | The hub pushes |
+| Planning workspace (default `commit.scope: "workspace"`) | Every change in the folder, respecting `.gitignore` | Only with `push: "auto"` and a remote |
+| Workspace with `commit.scope: "memory"` | Only `memory/` | Only with `push: "auto"` and a remote |
+| Linked code repo | **Nothing in the code repo**; memory commits land in the hub | Follows the hub's setting |
 
 Safety rules:
 - Commits are refused if a changed file looks like it holds a secret (API keys, private keys, tokens). You get a `fix:` hint.
@@ -125,14 +125,14 @@ Safety rules:
 - Nothing is committed during a merge or rebase.
 - Pushes are never forced.
 
-To keep everything local, set `"push": "never"` or run `init.mjs --target <dir> --push never`.
+Pushing is off by default (`"push": "never"`). To turn it on, set `"push": "auto"` or run `init.mjs --target <dir> --push auto`.
 
 ## Corporate use
 
 - **No data leaves the machine** except your own `git push` to the remote you configure. Search is local and there are no external services or APIs.
 - **Nothing to install beyond Node and Git.** No npm packages, no `ripgrep`, no database.
 - **Your commit hooks still run.** Memory commits are normal `git commit`s, so company pre-commit hooks and secret scanners (gitleaks, detect-secrets, …) apply. The built-in secret check is only a simple pattern match; treat your company's scanner as the real safety net.
-- **Choose where memory is pushed.** Memory holds business content, so only push to a repo with suitable access controls, or set `"push": "never"`. Protected branches reject the automatic pushes; give the workspace its own branch or repo.
+- **Choose where memory is pushed.** Memory holds business content, so only push to a repo with suitable access controls, and leave pushing off until that's agreed. Protected branches reject the automatic pushes; give the workspace its own branch or repo.
 - **Instruction files are shared.** The `AGENTS.md` block uses `~/.claude/skills/...` paths so it works for every teammate on macOS/Linux. Windows users see absolute paths.
 - **Windows** is supported by design but has not been tested yet:
   - the install uses directory junctions, so no admin rights are needed;

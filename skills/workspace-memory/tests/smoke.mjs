@@ -56,8 +56,15 @@ test('1. init creates only config, memory/ and managed blocks; pushes bootstrap'
   const dry = node('init.mjs', ['--target', WS, '--dry-run']);
   assert.equal(dry.code, 0, dry.err);
   assert.match(dry.out, /would change 13 file/);
+  const local = path.join(TMP, 'local-default');
+  fs.mkdirSync(local);
+  git(local, 'init', '-q');
+  git(local, 'remote', 'add', 'origin', REMOTE);
+  node('init.mjs', ['--target', local]);
+  assert.equal(JSON.parse(read(local, '.workspace-memory', 'config.json')).commit.push, 'never', 'pilot default must not push');
+  assert.equal(git(REMOTE, 'rev-list', '--all', '--count'), '0', 'default init must not push anything');
   assert.ok(!fs.existsSync(path.join(WS, 'memory')), 'dry run wrote files');
-  const result = node('init.mjs', ['--target', WS]);
+  const result = node('init.mjs', ['--target', WS, '--push', 'auto']);
   assert.equal(result.code, 0, result.err + result.out);
   assert.ok(!fs.existsSync(path.join(WS, '.gitignore')), '.gitignore should not be created');
   assert.ok(!fs.existsSync(path.join(WS, '.workspace-memory', 'scripts')), 'no vendored scripts');

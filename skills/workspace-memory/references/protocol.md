@@ -51,7 +51,7 @@ Memory quality then depends on *what* the model chooses to record, which the tab
 
 Notes use standard relative Markdown links, so they render in any Git host and in Obsidian or VS Code. The scripts insert links when text mentions an existing topic, lesson or decision ID, and `index.mjs` generates each note's "Referenced by" block. `search.mjs` ranks lines with BM25 keyword scoring (no dependencies, nothing leaves the machine), and `--related` walks links two hops out.
 
-Semantic (embedding) search is deliberately not built in. Keyword ranking plus the model's own reading of the indexes covers months of notes. A local embedding model is the planned opt-in if evals show retrieval misses.
+Semantic (embedding) search is deliberately not built in. Measured on a simulated 6 months of notes (`tests/longrun.mjs`): keyword search puts the right note in the top 3 for 10/10 queries that share words with the note, but only about 5/10 for pure paraphrases ("rental agreement" for "lease"). In agent evals the model compensates by trying other words and reading topic indexes, so recall questions passed on every model. A local embedding model remains the planned opt-in if real use shows misses.
 
 ## Why a periodic review exists
 
