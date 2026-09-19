@@ -31,25 +31,35 @@ session start ──► hook injects PROFILE + CURRENT + ACTIVE_THREADS + INDEX 
 - **Memory is kept tidy in two ways.** Progressively on every write (dedupe, caps, supersede, close) and by a periodic review the agent offers every 14 days when there is something to fix.
 - **Git is the safety net.** Nothing is ever force-pushed or rewritten; every past state is recoverable.
 
-## Install (once per machine)
+## Install
 
-**Global (recommended):**
+Requirements: Node.js 18+ and Git. Nothing else: no npm dependencies, services or databases. Tested on macOS; Linux and Windows are supported by design but not yet tested.
+
+**1. Get the skill** with the [skills](https://skills.sh/) CLI (recommended):
 ```bash
+npx skills add rajbdilip/skills --skill workspace-memory --global
+```
+No GitHub access? Install the same files from npm:
+```bash
+npx rajbdilip-skills@latest add --skill workspace-memory --agent claude-code --global
+```
+
+**2. Turn on memory hooks, once per machine.** The hooks load memory at session start, remind the agent to record what matters, and commit at the end of each turn:
+```bash
+node ~/.claude/skills/workspace-memory/scripts/install.mjs --scope global --dry-run   # preview
 node ~/.claude/skills/workspace-memory/scripts/install.mjs --scope global
 ```
-This:
-- links the skill into `~/.agents/skills/` (read by Gemini CLI and Codex);
-- adds hooks to `~/.claude/settings.json` and `~/.gemini/settings.json`.
+This adds hooks to `~/.claude/settings.json` and `~/.gemini/settings.json` and makes the skill visible to Gemini CLI and Codex through `~/.agents/skills/`. It keeps your other settings. Hooks do nothing in folders that are not workspaces. Choose agents with `--agents claude,gemini,codex`.
 
-Hooks do nothing in folders that are not workspaces. Choose agents with `--agents claude,gemini,codex`, and preview with `--dry-run`.
+If you installed for a different agent only, run `install.mjs` from wherever the skill landed (for example `~/.codex/skills/workspace-memory`). After a global install with Claude selected, the `~/.claude/skills/workspace-memory` paths used below always work.
 
-**Project only.** Use this when you can't install globally, or you want the workspace to carry its own copy:
+**Project-only install** (the workspace carries its own copy and hooks):
 ```bash
 node ~/.claude/skills/workspace-memory/scripts/install.mjs --scope project --target ~/work/offsite
 ```
-It copies the same skill folder into `<project>/.agents/skills/` and wires project-level hooks. Don't combine it with a global install.
+Don't combine it with a global install.
 
-**Uninstall:** add `--uninstall` to the same command. Only this skill's hooks and links are removed.
+**Uninstall:** add `--uninstall` to the same `install.mjs` command to remove this skill's hooks and links. Then remove the skill files with `npx skills remove workspace-memory` or `npx rajbdilip-skills remove workspace-memory`.
 
 ## Quick start
 
@@ -125,19 +135,9 @@ Safety rules:
 - Nothing is committed during a merge or rebase.
 - Pushes are never forced.
 
-Pushing is off by default (`"push": "never"`). To turn it on, set `"push": "auto"` or run `init.mjs --target <dir> --push auto`.
+Pushing is off by default (`"push": "never"`), so memory never leaves your machine unless you turn it on. Before you do, pick a remote whose access suits the content. To turn it on, set `"push": "auto"` or run `init.mjs --target <dir> --push auto`.
 
-## Corporate use
-
-- **No data leaves the machine** except your own `git push` to the remote you configure. Search is local and there are no external services or APIs.
-- **Nothing to install beyond Node and Git.** No npm packages, no `ripgrep`, no database.
-- **Your commit hooks still run.** Memory commits are normal `git commit`s, so company pre-commit hooks and secret scanners (gitleaks, detect-secrets, …) apply. The built-in secret check is only a simple pattern match; treat your company's scanner as the real safety net.
-- **Choose where memory is pushed.** Memory holds business content, so only push to a repo with suitable access controls, and leave pushing off until that's agreed. Protected branches reject the automatic pushes; give the workspace its own branch or repo.
-- **Instruction files are shared.** The `AGENTS.md` block uses `~/.claude/skills/...` paths so it works for every teammate on macOS/Linux. Windows users see absolute paths.
-- **Windows** is supported by design but has not been tested yet:
-  - the install uses directory junctions, so no admin rights are needed;
-  - Windows line endings are handled;
-  - Node must be on the `PATH` for hooks.
+Memory commits are ordinary `git commit`s, so any pre-commit hooks or secret scanners you use still run. The built-in secret check is a simple pattern match, not a replacement for them.
 
 ## Configuration
 
@@ -166,14 +166,6 @@ your-workspace/
 
 Nothing else is added: no scripts, no `.gitignore` changes. Machine-local state (hub registry, reminder state, locks) lives in `~/.workspace-memory/`.
 
-## Upgrading from the v1 draft
-
-```bash
-node ~/.claude/skills/workspace-memory/scripts/init.mjs --target <workspace> --upgrade
-node ~/.claude/skills/workspace-memory/scripts/install.mjs --scope global
-```
-This converts the config (v1 workspaces keep memory-only commits), removes vendored scripts and copied skills, and replaces the old hooks.
-
 ## Troubleshooting
 
 | Symptom | Cause and fix |
@@ -184,18 +176,20 @@ This converts the config (v1 workspaces keep memory-only commits), removes vendo
 | "git-operation-in-progress" / "detached-head" | Finish the merge or rebase, or `git switch main`. The next turn commits. |
 | Reminder too frequent or too rare | Adjust `nudge.minTurnsBetween` / `nudge.turnsWithoutMemory`. |
 | Startup file "truncated" | It exceeds its budget. Ask the agent to consolidate it (move detail into topics), or raise the budget. |
-| Hooks do nothing on Windows | Check `node --version` works in the same terminal; Claude Code runs hooks with that `PATH`. |
+| Hooks do nothing on Windows | Check `node --version` works in the same terminal; Claude Code runs hooks with that `PATH`. The installer uses directory junctions, so no admin rights are needed. |
 | Linked repo not recognised | Run `init.mjs --link` from the hub again; it re-registers the hub on this machine. |
 
 ## Development
 
-`WORKSPACE_MEMORY_NOW=YYYY-MM-DD` overrides the scripts' clock (used by the long-run simulation).
+Tests live in the [Git repository](https://github.com/rajbdilip/skills/tree/main/skills/workspace-memory/tests); they are not included in the npm package. From a clone, in `skills/workspace-memory/`:
 
 ```bash
-node ~/.claude/skills/workspace-memory/tests/smoke.mjs          # script tests, temp dirs only
-node ~/.claude/skills/workspace-memory/tests/eval/run.mjs       # model-parity eval (calls claude -p; costs tokens; cleans up after itself)
-node ~/.claude/skills/workspace-memory/tests/longrun.mjs --days 180   # simulates 6 months of daily use with a fake clock (no model, ~1 min)
-node ~/.claude/skills/workspace-memory/tests/eval/run.mjs --scenarios journey [--no-hooks]   # 6 fresh sessions over ~11 weeks, then a recap quiz
+node tests/smoke.mjs                              # script tests, temp dirs only (~1 min)
+node tests/longrun.mjs --days 180                 # 6 months of simulated daily use with a fake clock (~1 min)
+node tests/eval/run.mjs                           # model-parity eval via claude -p (costs tokens)
+node tests/eval/run.mjs --scenarios journey --no-hooks   # 6 fresh sessions over ~11 weeks, instructions only
 ```
+
+`WORKSPACE_MEMORY_NOW=YYYY-MM-DD` overrides the scripts' clock (used by the long-run simulation).
 
 Agent-facing instructions are in [SKILL.md](SKILL.md). The design rationale is in [references/protocol.md](references/protocol.md). `agents/openai.yaml` is optional Codex UI metadata (display name, default prompt); nothing depends on it.

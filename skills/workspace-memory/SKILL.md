@@ -1,8 +1,8 @@
 ---
 name: workspace-memory
-description: Use this skill as the project's long-term record, shared by Claude Code, Gemini CLI and Codex across sessions. You don't remember past sessions yourself, so use it whenever a message depends on or changes what was discussed before, even if the word "memory" never comes up: (1) recall: "what did we decide/agree", "why did we drop X", "catch me up", "where did we leave off", any mention of yesterday, last week or earlier meetings; (2) updates worth keeping: decisions, corrections ("actually it moved to…"), blockers or waiting-on items, deadlines, status changes, preferences, "keep track of / don't let me forget"; (3) upkeep: a "Memory review due" prompt, or a request to review, tidy or prune what's remembered; (4) setup: making several sessions or AI tools share context for a project or planning workspace, or linking code repos to it. Don't use it for RAM or memory-leak problems, Jira tickets, one-off meeting summaries, importing another assistant's memories, or Claude's built-in /memory.
+description: "Use this skill as the project's long-term record, shared by Claude Code, Gemini CLI and Codex across sessions. You don't remember past sessions yourself, so use it whenever a message depends on or changes what was discussed before, even if the word 'memory' never comes up: (1) recall: 'what did we decide/agree', 'why did we drop X', 'catch me up', 'where did we leave off', any mention of yesterday, last week or earlier meetings; (2) updates worth keeping: decisions, corrections ('actually it moved to…'), blockers or waiting-on items, deadlines, status changes, preferences, 'keep track of / don't let me forget'; (3) upkeep: a 'Memory review due' prompt, or a request to review, tidy or prune what's remembered; (4) setup: making several sessions or AI tools share context for a project or planning workspace, or linking code repos to it. Don't use it for RAM or memory-leak problems, Jira tickets, one-off meeting summaries, importing another assistant's memories, or Claude's built-in /memory."
 metadata:
-  version: 0.0.1
+  version: 0.0.2
 compatibility: Requires Node.js 18+ and Git on PATH. No npm packages, network services or other tools; works on macOS, Linux and Windows.
 ---
 
@@ -19,7 +19,6 @@ Commands below assume the skill is at `~/.claude/skills/workspace-memory`. If th
 | Hooks not installed on this machine yet | `node ~/.claude/skills/workspace-memory/scripts/install.mjs --scope global` |
 | New planning or non-coding workspace | `node ~/.claude/skills/workspace-memory/scripts/init.mjs --target <dir>` |
 | Link a code repo to a planning hub | `node ~/.claude/skills/workspace-memory/scripts/init.mjs --target <hub> --link <repo> --name <short-name>` |
-| Workspace made with the old v1 skill | `node ~/.claude/skills/workspace-memory/scripts/init.mjs --target <dir> --upgrade` |
 
 Add `--dry-run` to preview any of these.
 

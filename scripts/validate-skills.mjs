@@ -28,7 +28,14 @@ function parseFrontmatter(content, file) {
   for (const line of match[1].split(/\r?\n/)) {
     const field = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
     if (!field) continue;
-    fields[field[1]] = field[2].trim().replace(/^(["'])(.*)\1$/, "$2");
+    const raw = field[2].trim();
+    // Unquoted (plain) YAML values may not contain ": " or " #", nor start with a YAML indicator.
+    // Strict parsers such as the skills CLI reject them, so the skill silently disappears.
+    const quoted = /^(["']).*\1$/.test(raw);
+    if (raw && !quoted && (/:\s/.test(raw) || /\s#/.test(raw) || /^[\[\]{}&*!|>%@`,?:-]/.test(raw) && !/^[|>][+-]?$/.test(raw))) {
+      errors.push(`${file}: frontmatter '${field[1]}' must be quoted (it contains ': ', ' #' or starts with a YAML indicator)`);
+    }
+    fields[field[1]] = raw.replace(/^(["'])(.*)\1$/, "$2");
   }
   return fields;
 }
