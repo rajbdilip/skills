@@ -2,7 +2,7 @@
 name: workspace-memory
 description: "Use this skill as the project's long-term record, shared by Claude Code, Gemini CLI and Codex across sessions. You don't remember past sessions yourself, so use it whenever a message depends on or changes what was discussed before, even if the word 'memory' never comes up: (1) recall: 'what did we decide/agree', 'why did we drop X', 'catch me up', 'where did we leave off', any mention of yesterday, last week or earlier meetings; (2) updates worth keeping: decisions, corrections ('actually it moved to…'), blockers or waiting-on items, deadlines, status changes, preferences, 'keep track of / don't let me forget'; (3) upkeep: a 'Memory review due' prompt, or a request to review, tidy or prune what's remembered; (4) setup: making several sessions or AI tools share context for a project or planning workspace, or linking code repos to it. Don't use it for RAM or memory-leak problems, Jira tickets, one-off meeting summaries, importing another assistant's memories, or Claude's built-in /memory."
 metadata:
-  version: 0.0.3
+  version: 0.0.4
 compatibility: Requires Node.js 18+ and Git on PATH. No npm packages, network services or other tools; works on macOS, Linux and Windows.
 ---
 
@@ -11,16 +11,18 @@ compatibility: Requires Node.js 18+ and Git on PATH. No npm packages, network se
 Memory lives in `memory/` inside a workspace and is committed to Git. Scripts in this skill do all file editing, because they validate input, file each item in the right place, remove duplicates and keep links and indexes consistent; hand edits drift. Your job is to decide **what** is worth remembering and pass it to one command.
 
 Commands below assume the skill is at `~/.claude/skills/workspace-memory`. If the session context shows a different path for `capture.mjs`, use that path instead.
+Copy commands exactly as written. The `"$HOME/..."` form works in bash, zsh, Git Bash and PowerShell, so it is the same on macOS, Linux and Windows. Only in Windows `cmd.exe`, write `"%USERPROFILE%/..."` instead of `"$HOME/..."`.
 
 ## 1. Setup (only when asked, or when no `.workspace-memory/config.json` exists)
 
 | Situation | Run |
 | --- | --- |
-| Hooks not installed on this machine yet | `node ~/.claude/skills/workspace-memory/scripts/install.mjs --scope global` |
-| New planning or non-coding workspace | `node ~/.claude/skills/workspace-memory/scripts/init.mjs --target <dir>` |
-| Link a code repo to a planning hub | `node ~/.claude/skills/workspace-memory/scripts/init.mjs --target <hub> --link <repo> --name <short-name>` |
+| New planning or non-coding workspace | `node "$HOME/.claude/skills/workspace-memory/scripts/init.mjs" --target <dir>` |
+| Link a code repo to a planning hub | `node "$HOME/.claude/skills/workspace-memory/scripts/init.mjs" --target <hub> --link <repo> --name <short-name>` |
+| The user asks for hooks in every folder on this machine | `node "$HOME/.claude/skills/workspace-memory/scripts/install.mjs" --scope global` |
 
-Add `--dry-run` to preview any of these.
+`init.mjs` also turns on the hooks for that folder (and for the linked repo). Do not run `install.mjs` after it unless the user asks. Add `--dry-run` to preview any of these.
+After setup, tell the user to start a new session in the folder: hooks load from the next session on.
 
 ## 2. At session start
 
@@ -28,8 +30,8 @@ If the session context already contains "Workspace memory is active", the files 
 Otherwise read `memory/PROFILE.md`, `memory/CURRENT.md`, `memory/ACTIVE_THREADS.md` and `memory/INDEX.md`.
 Open other memory files only when the task needs them. To find older context, search. Do not open files one by one:
 ```bash
-node ~/.claude/skills/workspace-memory/scripts/search.mjs "caterer vegan notice"          # best-matching lines, grouped by note
-node ~/.claude/skills/workspace-memory/scripts/search.mjs --related memory/topics/venues.md   # notes linked to or from a note
+node "$HOME/.claude/skills/workspace-memory/scripts/search.mjs" "caterer vegan notice"          # best-matching lines, grouped by note
+node "$HOME/.claude/skills/workspace-memory/scripts/search.mjs" --related memory/topics/venues.md   # notes linked to or from a note
 ```
 Follow `PROFILE.md` preferences without being reminded. The whole point of this skill is that the user never repeats themselves.
 
@@ -40,7 +42,7 @@ When the user asks about the past ("what did we decide about the caterer?", "whe
 Acknowledging in chat is not enough. The conversation is gone next session; only memory carries over, and later turns or context compaction make details easy to lose. Triggers: "from now on", "always/never", "we decided", "going with", "instead of", "blocked/waiting until", "approved", deadlines, status updates, "remember".
 
 ```bash
-node ~/.claude/skills/workspace-memory/scripts/capture.mjs checkpoint [flags]
+node "$HOME/.claude/skills/workspace-memory/scripts/capture.mjs" checkpoint [flags]
 ```
 
 Use only the flags that apply. Each flag may repeat.
@@ -86,23 +88,23 @@ When nothing durable happened, record nothing. When the end-of-turn reminder ask
 
 User: "Let's go with Lisbon for the offsite, flights are cheapest there. Next I need venue quotes."
 ```bash
-node ~/.claude/skills/workspace-memory/scripts/capture.mjs checkpoint --decision "Offsite city | Lisbon | Cheapest flights for most of the team" --next "Get venue quotes in Lisbon"
+node "$HOME/.claude/skills/workspace-memory/scripts/capture.mjs" checkpoint --decision "Offsite city | Lisbon | Cheapest flights for most of the team" --next "Get venue quotes in Lisbon"
 ```
 
 User: "Please always give me summaries as short bullet lists, max 5."
 ```bash
-node ~/.claude/skills/workspace-memory/scripts/capture.mjs checkpoint --pref "Summaries as short bullet lists, at most 5 bullets"
+node "$HOME/.claude/skills/workspace-memory/scripts/capture.mjs" checkpoint --pref "Summaries as short bullet lists, at most 5 bullets"
 ```
 
 User: "We're stuck until finance approves the budget." Later: "Finance approved 38k."
 ```bash
-node ~/.claude/skills/workspace-memory/scripts/capture.mjs checkpoint --blocked "Budget approval from finance"
-node ~/.claude/skills/workspace-memory/scripts/capture.mjs checkpoint --close "budget approval | Finance approved 38k EUR" --state "Budget approved: 38k EUR"
+node "$HOME/.claude/skills/workspace-memory/scripts/capture.mjs" checkpoint --blocked "Budget approval from finance"
+node "$HOME/.claude/skills/workspace-memory/scripts/capture.mjs" checkpoint --close "budget approval | Finance approved 38k EUR" --state "Budget approved: 38k EUR"
 ```
 
 User: "Correction: the 40k budget cap was lifted."
 ```bash
-node ~/.claude/skills/workspace-memory/scripts/capture.mjs checkpoint --drop "Budget cap is 40k" --state "Budget cap lifted by leadership"
+node "$HOME/.claude/skills/workspace-memory/scripts/capture.mjs" checkpoint --drop "Budget cap is 40k" --state "Budget cap lifted by leadership"
 ```
 
 User: "What's 17 × 23?" → answer it. Nothing durable, so record nothing.
@@ -112,7 +114,7 @@ User: "What's 17 × 23?" → answer it. Nothing durable, so record nothing.
 Hooks (Claude Code, Gemini CLI) commit at the end of every turn. You do not need to commit. Git is the safety net: every past state of memory can be recovered.
 Without hooks (for example Codex), finish meaningful work with:
 ```bash
-node ~/.claude/skills/workspace-memory/scripts/commit.mjs --message "what changed"
+node "$HOME/.claude/skills/workspace-memory/scripts/commit.mjs" --message "what changed"
 ```
 Do not run your own `git add` / `git commit` / `git push` for memory. The commit script screens for secrets and never force-pushes. Never commit memory inside a linked code repo: the hub holds it, which keeps code history and pull requests clean.
 
@@ -123,19 +125,19 @@ The script links notes automatically. Mention an existing topic or lesson title,
 ## 8. Periodic review (when the session context says "Memory review due", or when asked)
 
 1. Tell the user a review is due and offer to do it now (2–5 minutes).
-2. Run `node ~/.claude/skills/workspace-memory/scripts/review.mjs`. It lists findings, each with the exact command to fix it.
+2. Run `node "$HOME/.claude/skills/workspace-memory/scripts/review.mjs"`. It lists findings, each with the exact command to fix it.
 3. For each finding, decide keep, drop or merge. Merge = add one consolidated bullet, then `--drop` the ones it replaces. Ask the user when unsure. Never drop decisions or unresolved threads on your own.
-4. Finish with `node ~/.claude/skills/workspace-memory/scripts/review.mjs --done "one line: what changed"`.
+4. Finish with `node "$HOME/.claude/skills/workspace-memory/scripts/review.mjs" --done "one line: what changed"`.
 
 ## 9. Maintenance (only when asked, or when an audit warning says so)
 
 | Task | Run |
 | --- | --- |
-| Check memory health | `node ~/.claude/skills/workspace-memory/scripts/audit.mjs` |
-| Rebuild indexes after hand edits | `node ~/.claude/skills/workspace-memory/scripts/index.mjs` |
-| Archive old session notes | `node ~/.claude/skills/workspace-memory/scripts/compact.mjs --days 90` |
+| Check memory health | `node "$HOME/.claude/skills/workspace-memory/scripts/audit.mjs"` |
+| Rebuild indexes after hand edits | `node "$HOME/.claude/skills/workspace-memory/scripts/index.mjs"` |
+| Archive old session notes | `node "$HOME/.claude/skills/workspace-memory/scripts/compact.mjs" --days 90` |
 | A startup file is over budget | Move detail into topics with `--fact`, remove stale bullets, then run audit |
 
-Hand edits are fine for larger restructuring. Keep the `## Section` headings and the `<!-- workspace-memory:... -->` markers, then run `node ~/.claude/skills/workspace-memory/scripts/index.mjs` and `node ~/.claude/skills/workspace-memory/scripts/audit.mjs`.
+Hand edits are fine for larger restructuring. Keep the `## Section` headings and the `<!-- workspace-memory:... -->` markers, then run `node "$HOME/.claude/skills/workspace-memory/scripts/index.mjs"` and `node "$HOME/.claude/skills/workspace-memory/scripts/audit.mjs"`.
 
 Why the rules are what they are: [references/protocol.md](references/protocol.md). Hooks and Git behaviour: [references/hooks.md](references/hooks.md). Layout and config: [references/structure.md](references/structure.md).

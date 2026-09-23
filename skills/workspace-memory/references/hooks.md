@@ -1,6 +1,14 @@
 # Hooks and Git behaviour
 
-`install.mjs` adds these hooks. Global scope writes them to `~/.claude/settings.json` and `~/.gemini/settings.json`; project scope writes them to the project's `.claude/` and `.gemini/`.
+`install.mjs` adds these hooks. Where they go depends on the scope:
+
+| Scope | Files | Committed? | Set up by |
+| --- | --- | --- | --- |
+| `local` (default) | `<dir>/.claude/settings.local.json`, `<dir>/.gemini/settings.json`, pointing at the installed skill | No: added to `.git/info/exclude`; a settings file already tracked by Git is skipped with a warning | `init.mjs` for each workspace and linked repo (skip with `--no-hooks`) |
+| `global` | `~/.claude/settings.json`, `~/.gemini/settings.json` | n/a | `install.mjs --scope global`, when asked |
+| `project` | `<dir>/.claude/settings.json`, `<dir>/.gemini/settings.json`, plus a copy of the skill in `<dir>/.agents/skills/` | Yes, portable for teammates | `install.mjs --scope project` |
+
+When global hooks exist, `local` adds nothing, so hooks never run twice.
 
 | Event (Claude / Gemini) | Mode | What it does |
 | --- | --- | --- |
@@ -11,7 +19,7 @@
 | `PreCompact` / `PreCompress` | `pre-compact` | Same as turn-end, before context is compressed |
 | `SessionEnd` / `SessionEnd` | `session-end` | Final commit |
 
-Global hooks run in every project. The hook exits silently unless the current directory is:
+Global hooks run in every project. In any scope, the hook exits silently unless the current directory is:
 - inside a workspace (it has `.workspace-memory/config.json`), or
 - inside a code repo linked to a registered hub.
 

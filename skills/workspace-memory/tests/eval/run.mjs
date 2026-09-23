@@ -159,7 +159,8 @@ const SCENARIOS = {
 function setupWorkspace(dir, stateDir, scenario = {}) {
   fs.mkdirSync(dir, { recursive: true });
   const env = { ...process.env, WORKSPACE_MEMORY_HOME: stateDir };
-  spawnSync('node', [path.join(SKILL, 'scripts', 'init.mjs'), '--target', dir], { env, encoding: 'utf8' });
+  // --no-hooks: hooks come only from --settings below, so --no-hooks runs really have none.
+  spawnSync('node', [path.join(SKILL, 'scripts', 'init.mjs'), '--target', dir, '--no-hooks'], { env, encoding: 'utf8' });
   if (!scenario.blank) spawnSync('node', [path.join(SKILL, 'scripts', 'capture.mjs'), 'checkpoint', '--objective', 'Plan the Q4 team offsite for about 40 people', '--constraint', 'Budget cap is 40k EUR', '--next', 'Collect venue quotes', '--commit'], { cwd: dir, env, encoding: 'utf8' });
   for (const flags of scenario.seed || []) {
     spawnSync('node', [path.join(SKILL, 'scripts', 'capture.mjs'), 'checkpoint', ...flags], { cwd: dir, env, encoding: 'utf8' });

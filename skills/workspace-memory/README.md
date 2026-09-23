@@ -44,29 +44,34 @@ No GitHub access? Install the same files from npm:
 npx rajbdilip-skills@latest add --skill workspace-memory --agent claude-code --global
 ```
 
-**2. Turn on memory hooks, once per machine.** The hooks load memory at session start, remind the agent to record what matters, and commit at the end of each turn:
+**2. That's it for install.** Hooks are turned on per folder when you create a workspace (Quick start below): they load memory at session start, remind the agent to record what matters, and commit at the end of each turn. They go in the folder's `.claude/settings.local.json` and `.gemini/settings.json`, which hold a path on your machine, so they are listed in `.git/info/exclude` and never committed. A settings file already committed to Git is left alone, with a warning. Codex has no hooks; it follows the block `init.mjs` writes into `AGENTS.md`.
+
+**Hooks in every folder instead** (optional): hooks that run everywhere and stay silent outside workspaces. This also makes the skill visible to Gemini CLI and Codex through `~/.agents/skills/`:
 ```bash
 node ~/.claude/skills/workspace-memory/scripts/install.mjs --scope global --dry-run   # preview
 node ~/.claude/skills/workspace-memory/scripts/install.mjs --scope global
 ```
-This adds hooks to `~/.claude/settings.json` and `~/.gemini/settings.json` and makes the skill visible to Gemini CLI and Codex through `~/.agents/skills/`. It keeps your other settings. Hooks do nothing in folders that are not workspaces. Choose agents with `--agents claude,gemini,codex`.
+It adds hooks to `~/.claude/settings.json` and `~/.gemini/settings.json` and keeps your other settings. Choose agents with `--agents claude,gemini,codex`. With global hooks on, `init.mjs` skips per-folder hooks.
 
-If you installed for a different agent only, run `install.mjs` from wherever the skill landed (for example `~/.codex/skills/workspace-memory`). After a global install with Claude selected, the `~/.claude/skills/workspace-memory` paths used below always work.
+If you installed for a different agent only, run the scripts from wherever the skill landed (for example `~/.codex/skills/workspace-memory`).
 
-**Project-only install** (the workspace carries its own copy and hooks):
+**Portable project install** (for a shared workspace; the workspace carries its own copy of the skill and committed hooks, so teammates need nothing installed):
 ```bash
 node ~/.claude/skills/workspace-memory/scripts/install.mjs --scope project --target ~/work/offsite
 ```
 Don't combine it with a global install.
 
-**Uninstall:** add `--uninstall` to the same `install.mjs` command to remove this skill's hooks and links. Then remove the skill files with `npx skills remove workspace-memory` or `npx rajbdilip-skills remove workspace-memory`.
+**Windows.** Commands here use `~`, which works in macOS/Linux shells and Git Bash. In PowerShell write `node "$HOME/.claude/skills/..."`, in `cmd.exe` write `node "%USERPROFILE%/.claude/skills/..."`. Agents don't need this: `SKILL.md` uses the `"$HOME/..."` form, and the commands the hooks and `AGENTS.md` give them are absolute paths on Windows.
+
+**Uninstall:** add `--uninstall` to the `install.mjs` command for that scope to remove this skill's hooks and links. For per-folder hooks: `install.mjs --uninstall --target <dir>`. Then remove the skill files with `npx skills remove workspace-memory` or `npx rajbdilip-skills remove workspace-memory`.
 
 ## Quick start
 
-**1. Create a workspace.** Use a new or existing folder. It becomes a Git repo if it isn't one already.
+**1. Create a workspace.** Use a new or existing folder. It becomes a Git repo if it isn't one already, and gets its hooks.
 ```bash
 node ~/.claude/skills/workspace-memory/scripts/init.mjs --target ~/work/offsite
 ```
+Add `--no-hooks` to skip the hooks.
 Memory is committed locally after every turn. Pushing is off by default. To back it up, add a remote you're allowed to use (`git remote add origin <url>`) and turn pushing on: `init.mjs --target ~/work/offsite --push auto`.
 
 **2. Start a session there** (`claude`, `gemini` or `codex`). Tell it what you're doing and what you like:
@@ -83,7 +88,7 @@ Next week, in a new session with any model, the agent already knows all of this.
 ```bash
 node ~/.claude/skills/workspace-memory/scripts/init.mjs --target ~/work/offsite --link ~/code/offsite-app --name app
 ```
-Sessions started inside `~/code/offsite-app` now load `memory/projects/app/` from the hub, and memory commits go to the hub. Add `--pointer` to put a short `AGENTS.md` note in the code repo for Codex, which has no hooks; commit that note yourself if you want it.
+Sessions started inside `~/code/offsite-app` now load `memory/projects/app/` from the hub, and memory commits go to the hub. The repo gets the same per-folder hooks, kept out of its Git history. Add `--pointer` to put a short `AGENTS.md` note in the code repo for Codex, which has no hooks; commit that note yourself if you want it.
 
 ## Day to day
 
@@ -164,13 +169,13 @@ your-workspace/
     └── projects/<name>/    memory for each linked code repo
 ```
 
-Nothing else is added: no scripts, no `.gitignore` changes. Machine-local state (hub registry, reminder state, locks) lives in `~/.workspace-memory/`.
+Nothing else is committed: no scripts, no `.gitignore` changes. The per-folder hook settings (`.claude/settings.local.json`, `.gemini/settings.json`) stay local through `.git/info/exclude`. Machine-local state (hub registry, reminder state, locks) lives in `~/.workspace-memory/`.
 
 ## Troubleshooting
 
 | Symptom | Cause and fix |
 | --- | --- |
-| No memory context at session start | Hooks not installed: run `install.mjs --scope global`. Or you're outside a workspace or linked repo. Hooks are deliberately silent there. |
+| No memory context at session start | Start a new session: hooks load from the next session after setup. Check that `.claude/settings.local.json` in the folder mentions `hook.mjs`; if not, run `install.mjs --target <dir>`. Outside a workspace or linked repo, hooks are deliberately silent. |
 | "possible-secret" and nothing committed | A changed file matches a secret pattern. Remove the credential or add the file to `.gitignore`. |
 | "push-failed" | The local commit is safe. In the workspace, run `git pull --rebase && git push`. |
 | "git-operation-in-progress" / "detached-head" | Finish the merge or rebase, or `git switch main`. The next turn commits. |

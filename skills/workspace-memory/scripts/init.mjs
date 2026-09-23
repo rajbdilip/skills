@@ -3,6 +3,7 @@ import path from 'node:path';
 import { auditWorkspace, formatAudit } from './audit.mjs';
 import { commitMemory, formatCommit } from './commit.mjs';
 import { rebuildIndexes } from './index.mjs';
+import { installHooks } from './install.mjs';
 import {
   DEFAULT_CONFIG,
   FRAGMENT_ROOT,
@@ -162,12 +163,15 @@ function initWorkspace(args) {
     runGit(root, ['init', '-q']);
     gitInitialized = true;
   }
+  // Hooks go in before the first commit so their machine-specific settings are already excluded from Git.
+  const hookLines = args['no-hooks'] ? [] : installHooks({ target: root, dryRun });
   const commitPaths = [...new Set(plan.changes.map((change) => (change.relative.startsWith(`${memoryRoot}/`) ? memoryRoot : change.relative)))]
     .filter((relative) => !dirtyBefore.has(relative));
   const lines = finish(root, plan, args, 'initialize workspace memory', commitPaths);
   if (gitInitialized) lines.splice(1, 0, '  git init (new repository)');
   for (const relative of dirtyBefore) lines.push(`note: ${relative} had uncommitted edits, so it was left for you to commit.`);
-  if (!dryRun) lines.push(`next: if hooks are not installed on this machine yet, run: ${scriptCommand('install.mjs')} --scope global`);
+  lines.push(...hookLines);
+  if (!dryRun && !args['no-hooks']) lines.push('next: start a new agent session in this folder; hooks load memory at session start.');
   return lines;
 }
 
@@ -194,6 +198,7 @@ function linkProject(args) {
     pointer.managedBlock('AGENTS.md', fillFragment('POINTER.md', { HUB: toPosix(hub), NAME: name }));
     for (const change of pointer.changes) lines.push(`  ${change.action} ${toPosix(path.join(repo, change.relative))} (pointer block for agents without hooks; commit it yourself if you want it shared)`);
   }
+  if (!args['no-hooks']) lines.push(...installHooks({ target: repo, dryRun }));
   lines.push(`linked "${name}" -> ${repo}. Sessions started inside that repo now load memory/projects/${name}/ from this hub.`);
   return lines;
 }
@@ -202,8 +207,12 @@ function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
     process.stdout.write(`Usage:
-  ${scriptCommand('init.mjs')} --target <dir> [--scope workspace|memory] [--push auto|never] [--dry-run] [--no-commit] [--no-git-init] [--upgrade]
-  ${scriptCommand('init.mjs')} --target <hub> --link <repo-dir> [--name <name>] [--pointer] [--dry-run]
+  ${scriptCommand('init.mjs')} --target <dir> [--scope workspace|memory] [--push auto|never] [--dry-run] [--no-commit] [--no-git-init] [--no-hooks] [--upgrade]
+  ${scriptCommand('init.mjs')} --target <hub> --link <repo-dir> [--name <name>] [--pointer] [--dry-run] [--no-hooks]
+
+Hooks for Claude Code and Gemini CLI are added for the target folder (and the linked repo) only,
+in .claude/settings.local.json and .gemini/settings.json, kept out of Git. Skipped when global
+hooks exist. --no-hooks skips them.
 `);
     return;
   }

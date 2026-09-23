@@ -68,6 +68,9 @@ test('1. init creates only config, memory/ and managed blocks; pushes bootstrap'
   assert.equal(result.code, 0, result.err + result.out);
   assert.ok(!fs.existsSync(path.join(WS, '.gitignore')), '.gitignore should not be created');
   assert.ok(!fs.existsSync(path.join(WS, '.workspace-memory', 'scripts')), 'no vendored scripts');
+  assert.match(read(WS, '.claude', 'settings.local.json'), /hook\.mjs/, 'init must wire Claude hooks for the workspace');
+  assert.match(read(WS, '.gemini', 'settings.json'), /hook\.mjs/, 'init must wire Gemini hooks for the workspace');
+  assert.ok(!fs.existsSync(path.join(HOME, '.claude', 'settings.json')), 'init must not touch global settings');
   const agents = read(WS, 'AGENTS.md');
   assert.match(agents, /# My rules[\s\S]*Keep this\.[\s\S]*workspace-memory:start/);
   assert.match(agents, /capture\.mjs checkpoint/);
@@ -225,6 +228,7 @@ test('8. linked repo: memory injected from hub, commits land in hub, repo untouc
   const link = node('init.mjs', ['--target', WS, '--link', REPO, '--name', 'app']);
   assert.equal(link.code, 0, link.err + link.out);
   assert.equal(git(REPO, 'status', '--porcelain'), '', 'link modified the code repo');
+  assert.match(read(REPO, '.claude', 'settings.local.json'), /hook\.mjs/, 'link must wire hooks in the code repo');
   const start = JSON.parse(hook('session-start', REPO, { session_id: 'p1' }).out).hookSpecificOutput.additionalContext;
   assert.match(start, /linked project "app"/);
   assert.match(start, /memory\/projects\/app\/CURRENT\.md/);
@@ -474,6 +478,45 @@ test('19. installer: dry-run, single agent, bad JSON, old hooks, foreign folders
   assert.ok(!fs.existsSync(copy));
   assert.ok(!fs.existsSync(path.join(proj, '.claude', 'skills', 'workspace-memory')));
   assert.doesNotMatch(read(proj, '.claude', 'settings.json'), /workspace-memory/);
+});
+
+test('20. local hooks: default scope, kept out of Git, never in committed files, yield to global, clean uninstall', () => {
+  const home = path.join(TMP, 'home20');
+  const env = { ...ENV, WORKSPACE_MEMORY_INSTALL_HOME: home };
+  const install = (args) => {
+    const result = spawnSync('node', [path.join(SKILL, 'scripts', 'install.mjs'), ...args], { cwd: TMP, env, encoding: 'utf8' });
+    return { code: result.status, out: result.stdout || '', err: result.stderr || '' };
+  };
+  const dir = path.join(TMP, 'local20');
+  fs.mkdirSync(path.join(dir, '.gemini'), { recursive: true });
+  git(dir, 'init', '-q');
+  // A committed Gemini settings file is left alone: a machine path must not reach teammates.
+  fs.writeFileSync(path.join(dir, '.gemini', 'settings.json'), '{"theme":"x"}\n');
+  git(dir, 'add', '-A');
+  git(dir, 'commit', '-q', '-m', 'shared settings');
+  const first = install(['--target', dir]);
+  assert.equal(first.code, 0, first.err);
+  assert.match(first.out, /settings\.json is committed to Git[\s\S]*fix: node/);
+  assert.equal(read(dir, '.gemini', 'settings.json'), '{"theme":"x"}\n');
+  const handler = JSON.parse(read(dir, '.claude', 'settings.local.json')).hooks.SessionStart[0].hooks[0];
+  assert.ok(path.isAbsolute(handler.args[0]) && fs.existsSync(handler.args[0]), 'local hook must point at the installed skill');
+  assert.equal(git(dir, 'status', '--porcelain'), '', 'local settings must be excluded from Git');
+  assert.ok(!fs.existsSync(path.join(home, '.claude', 'settings.json')), 'local install touched global settings');
+  const snapshot = read(dir, '.claude', 'settings.local.json');
+  install(['--target', dir]);
+  assert.equal(read(dir, '.claude', 'settings.local.json'), snapshot, 'second install changed settings');
+  assert.equal(read(dir, '.git', 'info', 'exclude').match(/settings\.local\.json/g).length, 1, 'exclude entry duplicated');
+  // Uninstall removes the file it created; global hooks make local ones unnecessary.
+  assert.equal(install(['--target', dir, '--uninstall']).code, 0);
+  assert.ok(!fs.existsSync(path.join(dir, '.claude', 'settings.local.json')));
+  install(['--scope', 'global', '--agents', 'claude']);
+  assert.match(install(['--target', dir, '--agents', 'claude']).out, /global hooks already cover/);
+  assert.ok(!fs.existsSync(path.join(dir, '.claude', 'settings.local.json')));
+  // init --no-hooks leaves hooks alone.
+  const bare = path.join(TMP, 'nohooks20');
+  const init = spawnSync('node', [path.join(SKILL, 'scripts', 'init.mjs'), '--target', bare, '--no-hooks'], { env, encoding: 'utf8' });
+  assert.equal(init.status, 0, init.stderr);
+  assert.ok(!fs.existsSync(path.join(bare, '.claude')) && !fs.existsSync(path.join(bare, '.gemini')));
 });
 
 fs.rmSync(TMP, { recursive: true, force: true });
